@@ -1,14 +1,21 @@
-import Foundation
 import Combine
+import Foundation
 import SwiftRex
 import UIKit
 
+// MARK: - ACTION
+
+// sourcery: Prism
 public enum AppLifecycleAction {
     case didEnterBackground
     case willEnterForeground
     case didBecomeActive
     case willBecomeInactive
+    case didFinishLaunchingWithOptions([UIApplication.LaunchOptionsKey: Any]?)
+    case willFinishLaunchingWithOptions([UIApplication.LaunchOptionsKey: Any]?)
 }
+
+// MARK: - STATE
 
 public enum AppLifecycle: Equatable {
     case backgroundActive
@@ -17,8 +24,10 @@ public enum AppLifecycle: Equatable {
     case foregroundInactive
 }
 
+// MARK: - REDUCER
+
 extension Reducer where ActionType == AppLifecycleAction, StateType == AppLifecycle {
-    static let lifecycle = Reducer { action, state in
+    public static let lifecycle = Reducer { action, state in
         switch (state, action) {
         case (.backgroundActive, .didEnterBackground): return state
         case (.backgroundInactive, .didEnterBackground): return state
@@ -39,16 +48,24 @@ extension Reducer where ActionType == AppLifecycleAction, StateType == AppLifecy
         case (.backgroundInactive, .willBecomeInactive): return state
         case (.foregroundActive, .willBecomeInactive): return .foregroundInactive
         case (.foregroundInactive, .willBecomeInactive): return state
+
+        case (_, .didFinishLaunchingWithOptions): return state
+        case (_, .willFinishLaunchingWithOptions): return state
         }
     }
 }
 
-// sourcery: AutoMockable
+// MARK: - PROTOCOL
+
+// sourcery: AutoMockable, imports = ["Combine", "SwiftRex"]
 public protocol NotificationPublisher {
     func receiveContext(
         getState: @escaping GetState<AppLifecycleMiddleware.StateType>,
-        output: AnyActionHandler<AppLifecycleMiddleware.OutputActionType>) -> AnyCancellable
+        output: AnyActionHandler<AppLifecycleMiddleware.OutputActionType>
+    ) -> AnyCancellable
 }
+
+// MARK: - MIDDLEWARE
 
 public final class AppLifecycleMiddleware: Middleware {
     public typealias InputActionType = Never
@@ -59,8 +76,8 @@ public final class AppLifecycleMiddleware: Middleware {
 
     private var cancellable: AnyCancellable?
 
-    init(publisher: NotificationPublisher = NotificationCenter.default) {
-        self.notificationPublisher = publisher
+    public init(publisher: NotificationPublisher = NotificationCenter.default) {
+        notificationPublisher = publisher
     }
 
     public func receiveContext(
@@ -71,16 +88,15 @@ public final class AppLifecycleMiddleware: Middleware {
     }
 
     public func handle(
-        action: InputActionType,
-        from dispatcher: ActionSource,
-        afterReducer: inout AfterReducer
-    ) {
-    }
+        action _: InputActionType,
+        from _: ActionSource,
+        afterReducer _: inout AfterReducer
+    ) {}
 }
 
 extension NotificationCenter: NotificationPublisher {
     public func receiveContext(
-        getState: @escaping GetState<AppLifecycleMiddleware.StateType>,
+        getState _: @escaping GetState<AppLifecycleMiddleware.StateType>,
         output: AnyActionHandler<AppLifecycleMiddleware.OutputActionType>
     ) -> AnyCancellable {
         let notificationCenter = NotificationCenter.default
